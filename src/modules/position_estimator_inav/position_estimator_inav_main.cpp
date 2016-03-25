@@ -736,9 +736,9 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 				if (updated) {
 					orb_copy(ORB_ID(vision_position_estimate), vision_position_estimate_sub, &vision);
 
-					static float last_vision_x = 0.0f;
+					/*static float last_vision_x = 0.0f;
 					static float last_vision_y = 0.0f;
-					static float last_vision_z = 0.0f;
+					static float last_vision_z = 0.0f;*/
 
 					/* reset position estimate on first vision update */
 					if (!vision_valid) {
@@ -755,10 +755,10 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 
 						vision_valid = true;
 
-						last_vision_x = vision.x;
+					/*	last_vision_x = vision.x;
 						last_vision_y = vision.y;
 						last_vision_z = vision.z;
-
+					*/
 						warnx("VISION estimate valid");
 						mavlink_log_info(mavlink_fd, "[inav] VISION estimate valid");
 					}
@@ -774,14 +774,14 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 					last_vision_time = vision.timestamp_boot;
 
 					if (vision_dt > 0.000001f && vision_dt < 0.2f) {
-						vision.vx = (vision.x - last_vision_x) / vision_dt;
+					/*	vision.vx = (vision.x - last_vision_x) / vision_dt;
 						vision.vy = (vision.y - last_vision_y) / vision_dt;
 						vision.vz = (vision.z - last_vision_z) / vision_dt;
 
 						last_vision_x = vision.x;
 						last_vision_y = vision.y;
 						last_vision_z = vision.z;
-
+					*/
 						/* calculate correction for velocity */
 						corr_vision[0][1] = vision.vx - x_est[1];
 						corr_vision[1][1] = vision.vy - y_est[1];
@@ -1324,6 +1324,8 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 			local_pos.dist_bottom_valid = dist_bottom_valid;
 			local_pos.eph = eph;
 			local_pos.epv = epv;
+
+			//mavlink_log_info(mavlink_fd,"[inav]local_pos:\nx:%d\ny:%d\nz:%d",(int)local_pos.x,(int)local_pos.y,(int)local_pos.z)
 
 			if (local_pos.dist_bottom_valid) {
 				local_pos.dist_bottom = dist_ground;

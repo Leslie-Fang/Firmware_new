@@ -228,6 +228,10 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 		handle_message_distance_sensor(msg);
 		break;
 
+	case MAVLINK_MSG_ID_VICON:
+		handle_message_vicon(msg);
+		break;
+
 	default:
 		break;
 	}
@@ -830,7 +834,7 @@ MavlinkReceiver::handle_message_set_actuator_control_target(mavlink_message_t *m
 void
 MavlinkReceiver::handle_message_vision_position_estimate(mavlink_message_t *msg)
 {
-	mavlink_vision_position_estimate_t pos;
+	/*mavlink_vision_position_estimate_t pos;
 	mavlink_msg_vision_position_estimate_decode(msg, &pos);
 
 	struct vision_position_estimate_s vision_position;
@@ -857,6 +861,36 @@ MavlinkReceiver::handle_message_vision_position_estimate(mavlink_message_t *msg)
 	vision_position.q[1] = q(1);
 	vision_position.q[2] = q(2);
 	vision_position.q[3] = q(3);
+
+	if (_vision_position_pub == nullptr) {
+		_vision_position_pub = orb_advertise(ORB_ID(vision_position_estimate), &vision_position);
+
+	} else {
+		orb_publish(ORB_ID(vision_position_estimate), _vision_position_pub, &vision_position);
+	}*/
+}
+
+void
+MavlinkReceiver::handle_message_vicon(mavlink_message_t *msg)
+{
+	mavlink_vicon_t pos;
+	mavlink_msg_vicon_decode(msg, &pos);
+
+	struct vision_position_estimate_s vision_position;
+	memset(&vision_position, 0, sizeof(vision_position));
+
+
+	vision_position.timestamp_boot = hrt_absolute_time(); // Monotonic time
+	vision_position.timestamp_computer = sync_stamp(pos.time_usec); // Synced time
+	vision_position.x = pos.x;
+	vision_position.y = pos.y;
+	vision_position.z = pos.z;
+
+	// XXX fix this
+	vision_position.vx = pos.vx;
+	vision_position.vy = pos.vy;
+	vision_position.vz = pos.vz;
+
 
 	if (_vision_position_pub == nullptr) {
 		_vision_position_pub = orb_advertise(ORB_ID(vision_position_estimate), &vision_position);
