@@ -242,6 +242,7 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 	float z_est[2] = { 0.0f, 0.0f };	// pos, vel
 
 	float est_buf[EST_BUF_SIZE][3][2];	// estimated position buffer
+	float vicon_est_buf[EST_BUF_SIZE[3][2];  //VICON postition buffer
 	float R_buf[EST_BUF_SIZE][3][3];	// rotation matrix buffer
 	float R_gps[3][3];					// rotation matrix for GPS correction moment
 	memset(est_buf, 0, sizeof(est_buf));
