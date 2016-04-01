@@ -95,6 +95,11 @@ set(config_module_list
 	modules/vtol_att_control
 
 	#
+	#additional apps
+	#
+	modules/serial
+
+	#
 	# Logging
 	#
 	modules/sdlog2
@@ -162,6 +167,7 @@ set(config_module_list
 
 	# Hardware test
 	#examples/hwtest
+
 )
 
 set(config_extra_builtin_cmds
