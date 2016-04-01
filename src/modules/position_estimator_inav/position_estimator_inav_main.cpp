@@ -242,7 +242,6 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 	float z_est[2] = { 0.0f, 0.0f };	// pos, vel
 
 	float est_buf[EST_BUF_SIZE][3][2];	// estimated position buffer
-	float vicon_est_buf[EST_BUF_SIZE[3][2];  //VICON postition buffer
 	float R_buf[EST_BUF_SIZE][3][3];	// rotation matrix buffer
 	float R_gps[3][3];					// rotation matrix for GPS correction moment
 	memset(est_buf, 0, sizeof(est_buf));
@@ -741,11 +740,11 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 
 
 
-					/*int est_vicon = buf_ptr - 1 - min(EST_BUF_SIZE - 1, max(0, (int)(DELAY_VICON * 1000000.0f / PUB_INTERVAL)));
+					int est_vicon = buf_ptr - 1 - min(EST_BUF_SIZE - 1, max(0, (int)(DELAY_VICON * 1000000.0f / PUB_INTERVAL)));
 
 					if (est_vicon < 0) {
 						est_vicon += EST_BUF_SIZE;
-					}*/
+					}
 
 
 					/* reset position estimate on first vision update */
@@ -774,20 +773,20 @@ int position_estimator_inav_thread_main(int argc, char *argv[])
 					}
 
 					/* calculate correction for position */
-					/*corr_vision[0][0] = vision.x - est_buf[est_vicon][0][0];
+					corr_vision[0][0] = vision.x - est_buf[est_vicon][0][0];
 					corr_vision[1][0] = vision.y - est_buf[est_vicon][1][0];
 					corr_vision[2][0] = vision.z - est_buf[est_vicon][2][0];
 
 					corr_vision[0][1] = vision.vx - est_buf[est_vicon][0][1];
 					corr_vision[1][1] = vision.vy - est_buf[est_vicon][1][1];
-					corr_vision[2][1] = vision.vz - est_buf[est_vicon][2][1];*/
-					corr_vision[0][0] = vision.x - x_est[0];
+					corr_vision[2][1] = vision.vz - est_buf[est_vicon][2][1];
+					/*corr_vision[0][0] = vision.x - x_est[0];
 					corr_vision[1][0] = vision.y - y_est[0];
 					corr_vision[2][0] = vision.z - z_est[0];
 
 					corr_vision[0][1] = vision.vx - x_est[1];
 					corr_vision[1][1] = vision.vy - y_est[1];
-					corr_vision[2][1] = vision.vz - z_est[1];
+					corr_vision[2][1] = vision.vz - z_est[1];*/
 
 					vision_updates++;
 				}
