@@ -26,18 +26,19 @@ static bool thread_should_exit = false;
 static bool thread_running = false;		
 static int serial_task;				
 
-int  _serial_fd;
+int _serial_fd;
 int ret;
 
 unsigned char ringbuf[MAXSIZE];
 unsigned char data_buf[14];
-char readbuf[1];
+char readbuf[25];
 int read_addr = 0;  
 int write_addr = 0;  
 short  data_transformed[6];
 unsigned short crc_data = 0;
 unsigned short crc_data_last = 0;
 bool valid = true;
+bool read_valid = false;
 
 /**
  *  management function.
@@ -134,18 +135,19 @@ int serial_thread_main(int argc, char *argv[])
 	}
 
 	while (!thread_should_exit) {
-		warnx("Hello serial!\n");
+		//warnx("Hello serial!\n");
 
-		for(int i = 0 ; i < 20 ; i++)
+		
+		ret = read(_serial_fd, readbuf,20);
+		if( ret <= 0 )
 		{
-			ret = read(_serial_fd, readbuf,1) ;
-			if( ret < 0 )
+			warnx("read err: %d\n", ret);
+
+		}else
+		{
+			for(int i = 0 ; i < 20 ; i++)
 			{
-				warnx("read err: %d\n", ret);
-			
-			}else
-			{
-				write_data(readbuf[0]) ;
+				write_data(readbuf[i]) ;
 			}
 		}
 
@@ -161,6 +163,7 @@ int serial_thread_main(int argc, char *argv[])
 					data_buf[j] = ringbuf[read_addr] ;
 					read_addr = next_data_handle(read_addr) ;
 				}
+				read_valid = true;
 				break;
 			}else
 			{
@@ -189,7 +192,7 @@ int serial_thread_main(int argc, char *argv[])
 			if(crc_data == crc_data_last){
 				valid = false;
 			}
-			if(valid){
+			if(valid && read_valid){
 				if (vicon_pub == nullptr) {
 					vicon_pub = orb_advertise(ORB_ID(vision_position_estimate), &vicon);
 				} else {
@@ -201,7 +204,7 @@ int serial_thread_main(int argc, char *argv[])
 			
 		}
 
-		usleep(100000);
+		usleep(90000);
 	}
 
 	warnx("[serial] exiting.\n");
@@ -314,8 +317,8 @@ int set_serial(int fd,int nSpeed, int nBits, char nEvent, int nStop)
 		newtio.c_cflag |=  CSTOPB;  
 	} 
 
-	newtio.c_cc[VTIME]  = 100;
-	newtio.c_cc[VMIN] = 0;//返回的最小值 
+	newtio.c_cc[VTIME] = 0;
+	newtio.c_cc[VMIN] = 0;
 	tcflush(fd,TCIFLUSH);  
 	if((tcsetattr(fd,TCSANOW,&newtio))!=0)  
 	{  
