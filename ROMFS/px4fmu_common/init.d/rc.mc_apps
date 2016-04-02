@@ -40,3 +40,4 @@ fi
 # Start Land Detector
 #
 land_detector start multicopter
+serial start

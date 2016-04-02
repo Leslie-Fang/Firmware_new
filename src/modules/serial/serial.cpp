@@ -35,7 +35,9 @@ char readbuf[1];
 int read_addr = 0;  
 int write_addr = 0;  
 short  data_transformed[6];
-unsigned short crc_data= 0;
+unsigned short crc_data = 0;
+unsigned short crc_data_last = 0;
+bool valid = true;
 
 /**
  *  management function.
@@ -172,6 +174,7 @@ int serial_thread_main(int argc, char *argv[])
 		data_transformed[3] = (data_buf[7]<<8) | data_buf[6] ; 
 		data_transformed[4] = (data_buf[9]<<8) | data_buf[8] ; 
 		data_transformed[5] = (data_buf[11]<<8) | data_buf[10] ; 
+		crc_data_last = crc_data;
 		crc_data = (data_buf[13]<<8) | data_buf[12] ;
 		if(crc(data_transformed,12) == crc_data)
 		{
@@ -183,11 +186,19 @@ int serial_thread_main(int argc, char *argv[])
 			vicon.vy = data_transformed[4]/1000.0f;
 			vicon.vz = data_transformed[5]/1000.0f;
 
-			if (vicon_pub == nullptr) {
-				vicon_pub = orb_advertise(ORB_ID(vision_position_estimate), &vicon);
-			} else {
-				orb_publish(ORB_ID(vision_position_estimate), vicon_pub, &vicon);
+			if(crc_data == crc_data_last){
+				valid = false;
 			}
+			if(valid){
+				if (vicon_pub == nullptr) {
+					vicon_pub = orb_advertise(ORB_ID(vision_position_estimate), &vicon);
+				} else {
+					orb_publish(ORB_ID(vision_position_estimate), vicon_pub, &vicon);
+				}	
+			}else{
+				valid = true;
+			}
+			
 		}
 
 		usleep(100000);
