@@ -9,12 +9,17 @@
 #include <errno.h>
 
 #include <px4_config.h>
+#include <px4_tasks.h>
+#include <px4_time.h>
 #include <nuttx/sched.h>
 #include <systemlib/systemlib.h>
 #include <systemlib/err.h>
 
+#include <uORB/uORB.h>
+#include <uORB/topics/vision_position_estimate.h>
+
 #define SERIAL_PORT	"/dev/ttyS6"
-#define MAXSIZE 	60
+#define MAXSIZE 	50
 #define BAUDRATE	57600
 
 static bool thread_should_exit = false;		
@@ -22,12 +27,14 @@ static bool thread_running = false;
 static int serial_task;				
 
 int  _serial_fd;
+int ret;
 
-short ringbuf[MAXSIZE];
-short readbuf[18];
-unsigned short  data[9];
+unsigned char ringbuf[MAXSIZE];
+unsigned char data_buf[14];
+char readbuf[1];
 int read_addr = 0;  
 int write_addr = 0;  
+short  data[6];
 unsigned short crc_data= 0;
 
 /**
@@ -49,7 +56,7 @@ int set_serial(int fd, int nSpeed, int nBits, char nEvent, int nStop) ;
 void serial_init() ;
 int next_data_handle(int addr) ;  
 int next_data_handle(int addr , int count) ;
-void write_data(short data) ;
+void write_data(char data) ;
 unsigned short crc_update(unsigned short  crc ,  unsigned char data) ;
 unsigned short crc(void* data, unsigned short count) ;
 
@@ -108,9 +115,13 @@ int serial_main(int argc, char *argv[])
 
 int serial_thread_main(int argc, char *argv[])
 {
-
 	warnx("[serial] starting\n");
 	thread_running = true;
+
+	/* advertise attitude topic */
+	struct vision_position_estimate_s vicon;
+	memset(&vicon, 0, sizeof(vicon));
+	orb_advert_t vicon_pub = orb_advertise(ORB_ID(vision_position_estimate), &vicon);
 
 	serial_init();
 	ret = set_serial( _serial_fd, BAUDRATE, 8, 'N', 1 );
@@ -122,7 +133,69 @@ int serial_thread_main(int argc, char *argv[])
 
 	while (!thread_should_exit) {
 		warnx("Hello serial!\n");
-		sleep(10);
+
+		for(int i = 0 ; i < 20 ; i++)
+		{
+			ret = read(_serial_fd, readbuf,1) ;
+			if( ret < 0 )
+			{
+				warnx("read err: %d\n", ret);
+			
+			}else
+			{
+				write_data(readbuf[0]) ;
+			}
+		}
+
+		for(int i = 0 ; i < MAXSIZE ; i++)
+		{
+			if((ringbuf[read_addr] == '>') && (ringbuf[next_data_handle(read_addr)] == '*') 
+			    && (ringbuf[next_data_handle(read_addr,2)] == '>') && (ringbuf[next_data_handle(read_addr,17)] == '<') 
+			    && (ringbuf[next_data_handle(read_addr,18)] == '#') && (ringbuf[next_data_handle(read_addr,19)] == '<'))  
+			{
+				read_addr = next_data_handle(read_addr,3) ; 
+				for(int j = 0 ; j < 14 ; j++)
+				{
+					data_buf[j] = ringbuf[read_addr] ;
+					read_addr = next_data_handle(read_addr) ;
+				}
+				break;
+			}else
+			{
+				read_addr = next_data_handle(read_addr) ;
+			}
+		}
+		read_addr = next_data_handle(read_addr, 3);
+		data[0] = (data_buf[1]<<8) | data_buf[0] ;
+		data[1] = (data_buf[3]<<8) | data_buf[2] ; 
+		data[2] = (data_buf[5]<<8) | data_buf[4] ; 
+		data[3] = (data_buf[7]<<8) | data_buf[6] ; 
+		data[4] = (data_buf[9]<<8) | data_buf[8] ; 
+		data[5] = (data_buf[11]<<8) | data_buf[10] ; 
+		crc_data = (data_buf[13]<<8) | data_buf[12] ;
+		if(crc(data,12) == crc_data)
+		{
+			vicon.timestamp_boot = hrt_absolute_time(); 
+			vicon.x = data[0]/1000.0f;
+			vicon.y = data[1]/1000.0f;
+			vicon.z = data[2]/1000.0f;
+			vicon.vx = data[3]/1000.0f;
+			vicon.vy = data[4]/1000.0f;
+			vicon.vz = data[5]/1000.0f;
+
+			PX4_WARN("[serial] Position:\t%8.4f\t%8.4f\t%8.4f",
+					 (double)vicon.x,
+					 (double)vicon.y,
+					 (double)vicon.z);
+
+			if (vicon_pub == nullptr) {
+				vicon_pub = orb_advertise(ORB_ID(vision_position_estimate), &vicon);
+			} else {
+				orb_publish(ORB_ID(vision_position_estimate), vicon_pub, &vicon);
+			}
+		}
+
+		usleep(100000);
 	}
 
 	warnx("[serial] exiting.\n");
@@ -205,6 +278,11 @@ int set_serial(int fd,int nSpeed, int nBits, char nEvent, int nStop)
 		cfsetospeed(&newtio, B19200);  
 		break; 
 
+		case 57600:  
+		cfsetispeed(&newtio, B57600);  
+		cfsetospeed(&newtio, B57600);  
+		break; 
+
 		case 115200:  
 		cfsetispeed(&newtio, B115200);  
 		cfsetospeed(&newtio, B115200);  
@@ -267,9 +345,9 @@ int next_data_handle(int addr , int count)
   	return a;  
 }
  
-void write_data(short data)  
+void write_data(char data)  
 {  
-	*(ringbuf+write_addr) = data;  
+	*(ringbuf+write_addr) = (unsigned char)data;  
 	write_addr = next_data_handle(write_addr);  
 }  
 
