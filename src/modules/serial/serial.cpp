@@ -34,7 +34,7 @@ unsigned char data_buf[14];
 char readbuf[1];
 int read_addr = 0;  
 int write_addr = 0;  
-short  data[6];
+short  data_transformed[6];
 unsigned short crc_data= 0;
 
 /**
@@ -166,27 +166,22 @@ int serial_thread_main(int argc, char *argv[])
 			}
 		}
 		read_addr = next_data_handle(read_addr, 3);
-		data[0] = (data_buf[1]<<8) | data_buf[0] ;
-		data[1] = (data_buf[3]<<8) | data_buf[2] ; 
-		data[2] = (data_buf[5]<<8) | data_buf[4] ; 
-		data[3] = (data_buf[7]<<8) | data_buf[6] ; 
-		data[4] = (data_buf[9]<<8) | data_buf[8] ; 
-		data[5] = (data_buf[11]<<8) | data_buf[10] ; 
+		data_transformed[0] = (data_buf[1]<<8) | data_buf[0] ;
+		data_transformed[1] = (data_buf[3]<<8) | data_buf[2] ; 
+		data_transformed[2] = (data_buf[5]<<8) | data_buf[4] ; 
+		data_transformed[3] = (data_buf[7]<<8) | data_buf[6] ; 
+		data_transformed[4] = (data_buf[9]<<8) | data_buf[8] ; 
+		data_transformed[5] = (data_buf[11]<<8) | data_buf[10] ; 
 		crc_data = (data_buf[13]<<8) | data_buf[12] ;
-		if(crc(data,12) == crc_data)
+		if(crc(data_transformed,12) == crc_data)
 		{
 			vicon.timestamp_boot = hrt_absolute_time(); 
-			vicon.x = data[0]/1000.0f;
-			vicon.y = data[1]/1000.0f;
-			vicon.z = data[2]/1000.0f;
-			vicon.vx = data[3]/1000.0f;
-			vicon.vy = data[4]/1000.0f;
-			vicon.vz = data[5]/1000.0f;
-
-			PX4_WARN("[serial] Position:\t%8.4f\t%8.4f\t%8.4f",
-					 (double)vicon.x,
-					 (double)vicon.y,
-					 (double)vicon.z);
+			vicon.x = data_transformed[0]/1000.0f;
+			vicon.y = data_transformed[1]/1000.0f;
+			vicon.z = data_transformed[2]/1000.0f;
+			vicon.vx = data_transformed[3]/1000.0f;
+			vicon.vy = data_transformed[4]/1000.0f;
+			vicon.vz = data_transformed[5]/1000.0f;
 
 			if (vicon_pub == nullptr) {
 				vicon_pub = orb_advertise(ORB_ID(vision_position_estimate), &vicon);
