@@ -18,6 +18,9 @@
 #include <uORB/uORB.h>
 #include <uORB/topics/vision_position_estimate.h>
 
+#include <mavlink/mavlink_log.h>
+#include <px4_posix.h>
+
 #define SERIAL_PORT	"/dev/ttyS6"
 #define MAXSIZE 	50
 #define BAUDRATE	57600
@@ -118,6 +121,9 @@ int serial_main(int argc, char *argv[])
 
 int serial_thread_main(int argc, char *argv[])
 {
+	int mavlink_fd;
+	mavlink_fd = px4_open(MAVLINK_LOG_DEVICE, 0);
+
 	warnx("[serial] starting\n");
 	thread_running = true;
 
@@ -197,6 +203,7 @@ int serial_thread_main(int argc, char *argv[])
 					vicon_pub = orb_advertise(ORB_ID(vision_position_estimate), &vicon);
 				} else {
 					orb_publish(ORB_ID(vision_position_estimate), vicon_pub, &vicon);
+					mavlink_log_info(mavlink_fd, "[vicon] position: %d", (double)vicon.x);
 				}	
 			}else{
 				valid = true;
