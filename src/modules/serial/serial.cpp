@@ -22,8 +22,8 @@
 #include <px4_posix.h>
 
 #define SERIAL_PORT	"/dev/ttyS6"
-#define MAXSIZE 	50
-#define BAUDRATE	57600
+#define MAXSIZE 	120
+#define BAUDRATE	115200
 
 static bool thread_should_exit = false;		
 static bool thread_running = false;		
@@ -32,14 +32,14 @@ static int serial_task;
 int _serial_fd;
 int ret;
 
-unsigned char ringbuf[MAXSIZE];
-unsigned char data_buf[14];
-char readbuf[25];
+char ringbuf[MAXSIZE];
+char data_buf[20];
+char readbuf[40];
+long data_transformed[3];
+double time_stamp;
 int read_addr = 0;  
 int write_addr = 0;  
-short  data_transformed[6];
-unsigned short crc_data = 0;
-unsigned short crc_data_last = 0;
+
 bool valid = true;
 bool read_valid = false;
 
@@ -63,8 +63,7 @@ void serial_init() ;
 int next_data_handle(int addr) ;  
 int next_data_handle(int addr , int count) ;
 void write_data(char data) ;
-unsigned short crc_update(unsigned short  crc ,  unsigned char data) ;
-unsigned short crc(void* data, unsigned short count) ;
+
 
 /**
  * The app only briefly exists to start
@@ -128,9 +127,9 @@ int serial_thread_main(int argc, char *argv[])
 	thread_running = true;
 
 	/* advertise attitude topic */
-	struct vision_position_estimate_s vicon;
-	memset(&vicon, 0, sizeof(vicon));
-	orb_advert_t vicon_pub = orb_advertise(ORB_ID(vision_position_estimate), &vicon);
+	struct vision_position_estimate_s localsense;
+	memset(&localsense, 0, sizeof(localsense));
+	orb_advert_t pos_pub = orb_advertise(ORB_ID(vision_position_estimate), &localsense);
 
 	serial_init();
 	ret = set_serial( _serial_fd, BAUDRATE, 8, 'N', 1 );
@@ -144,27 +143,28 @@ int serial_thread_main(int argc, char *argv[])
 		//warnx("Hello serial!\n");
 
 		
-		ret = read(_serial_fd, readbuf,20);
+		ret = read(_serial_fd, readbuf,40);
 		if( ret <= 0 )
 		{
 			warnx("read err: %d\n", ret);
 
 		}else
 		{
-			for(int i = 0 ; i < 20 ; i++)
+			for(int i = 0 ; i < 40 ; i++)
 			{
 				write_data(readbuf[i]) ;
 			}
 		}
 
+		//Read position data
 		for(int i = 0 ; i < MAXSIZE ; i++)
 		{
-			if((ringbuf[read_addr] == '>') && (ringbuf[next_data_handle(read_addr)] == '*') 
-			    && (ringbuf[next_data_handle(read_addr,2)] == '>') && (ringbuf[next_data_handle(read_addr,17)] == '<') 
-			    && (ringbuf[next_data_handle(read_addr,18)] == '#') && (ringbuf[next_data_handle(read_addr,19)] == '<'))  
+			if((ringbuf[read_addr] == 0xA5) && (ringbuf[next_data_handle(read_addr)] == 0x5A) 
+			    && (ringbuf[next_data_handle(read_addr,2)] == 0x2A) && (ringbuf[next_data_handle(read_addr,3)] == 0x21) 
+			    && (ringbuf[next_data_handle(read_addr,31)] == 0x55 && (ringbuf[next_data_handle(read_addr,32)] == 0xAA)  
 			{
-				read_addr = next_data_handle(read_addr,3) ; 
-				for(int j = 0 ; j < 14 ; j++)
+				read_addr = next_data_handle(read_addr,6) ; 
+				for(int j = 0 ; j < 20 ; j++)
 				{
 					data_buf[j] = ringbuf[read_addr] ;
 					read_addr = next_data_handle(read_addr) ;
@@ -176,34 +176,31 @@ int serial_thread_main(int argc, char *argv[])
 				read_addr = next_data_handle(read_addr) ;
 			}
 		}
-		read_addr = next_data_handle(read_addr, 3);
-		data_transformed[0] = (data_buf[1]<<8) | data_buf[0] ;
-		data_transformed[1] = (data_buf[3]<<8) | data_buf[2] ; 
-		data_transformed[2] = (data_buf[5]<<8) | data_buf[4] ; 
-		data_transformed[3] = (data_buf[7]<<8) | data_buf[6] ; 
-		data_transformed[4] = (data_buf[9]<<8) | data_buf[8] ; 
-		data_transformed[5] = (data_buf[11]<<8) | data_buf[10] ; 
-		crc_data_last = crc_data;
-		crc_data = (data_buf[13]<<8) | data_buf[12] ;
+		read_addr = next_data_handle(read_addr, 7);
+		data_transformed[0] = (data_buf[3]<<24) | (data_buf[2]<<16) | (data_buf[1]<<8) | data_buf[0] ;
+		data_transformed[1] = (data_buf[7]<<24) | (data_buf[6]<<16) | (data_buf[5]<<8) | data_buf[4] ;
+		data_transformed[2] = (data_buf[11]<<24) | (data_buf[10]<<16) | (data_buf[9]<<8) | data_buf[8] ;
+
+
 		if(crc(data_transformed,12) == crc_data)
 		{
-			vicon.timestamp_boot = hrt_absolute_time(); 
-			vicon.x = data_transformed[0]/1000.0f;
-			vicon.y = data_transformed[1]/1000.0f;
-			vicon.z = data_transformed[2]/1000.0f;
-			vicon.vx = data_transformed[3]/1000.0f;
-			vicon.vy = data_transformed[4]/1000.0f;
-			vicon.vz = data_transformed[5]/1000.0f;
+			localsense.timestamp_boot = hrt_absolute_time(); 
+			localsense.x = data_transformed[0]/1000.0f;
+			localsense.y = data_transformed[1]/1000.0f;
+			localsense.z = data_transformed[2]/1000.0f;
+			localsense.vx = data_transformed[3]/1000.0f;
+			localsense.vy = data_transformed[4]/1000.0f;
+			localsense.vz = data_transformed[5]/1000.0f;
 
 			if(crc_data == crc_data_last){
 				valid = false;
 			}
 			if(valid && read_valid){
-				if (vicon_pub == nullptr) {
-					vicon_pub = orb_advertise(ORB_ID(vision_position_estimate), &vicon);
+				if (pos_pub == nullptr) {
+					pos_pub = orb_advertise(ORB_ID(vision_position_estimate), &localsense);
 				} else {
-					orb_publish(ORB_ID(vision_position_estimate), vicon_pub, &vicon);
-					mavlink_log_info(mavlink_fd, "[vicon] position: %d", (double)vicon.x);
+					orb_publish(ORB_ID(vision_position_estimate), pos_pub, &localsense);
+					mavlink_log_info(mavlink_fd, "[localsense] position: %d", (double)localsense.x);
 				}	
 			}else{
 				valid = true;
