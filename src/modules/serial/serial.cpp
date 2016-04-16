@@ -22,7 +22,7 @@
 #include <px4_posix.h>
 
 #define SERIAL_PORT	"/dev/ttyS6"
-#define MAXSIZE 	120
+#define MAXSIZE 	80
 #define BAUDRATE	115200
 
 static bool thread_should_exit = false;		
@@ -35,13 +35,18 @@ int ret;
 char ringbuf[MAXSIZE];
 char data_buf[20];
 char readbuf[40];
-long data_transformed[3];
-double time_stamp;
+int data_transformed[3];
+float time_stamp;
+float last_x;
+float last_y;
+float last_z;
+
 int read_addr = 0;  
 int write_addr = 0;  
 
 bool valid = true;
 bool read_valid = false;
+
 
 /**
  *  management function.
@@ -120,8 +125,8 @@ int serial_main(int argc, char *argv[])
 
 int serial_thread_main(int argc, char *argv[])
 {
-	int mavlink_fd;
-	mavlink_fd = px4_open(MAVLINK_LOG_DEVICE, 0);
+	//int mavlink_fd;
+	//mavlink_fd = px4_open(MAVLINK_LOG_DEVICE, 0);
 
 	warnx("[serial] starting\n");
 	thread_running = true;
@@ -161,7 +166,7 @@ int serial_thread_main(int argc, char *argv[])
 		{
 			if((ringbuf[read_addr] == 0xA5) && (ringbuf[next_data_handle(read_addr)] == 0x5A) 
 			    && (ringbuf[next_data_handle(read_addr,2)] == 0x2A) && (ringbuf[next_data_handle(read_addr,3)] == 0x21) 
-			    && (ringbuf[next_data_handle(read_addr,31)] == 0x55 && (ringbuf[next_data_handle(read_addr,32)] == 0xAA)  
+			    && (ringbuf[next_data_handle(read_addr,31)] == 0x55) && (ringbuf[next_data_handle(read_addr,32)] == 0xAA))  
 			{
 				read_addr = next_data_handle(read_addr,6) ; 
 				for(int j = 0 ; j < 20 ; j++)
@@ -177,38 +182,48 @@ int serial_thread_main(int argc, char *argv[])
 			}
 		}
 		read_addr = next_data_handle(read_addr, 7);
-		data_transformed[0] = (data_buf[3]<<24) | (data_buf[2]<<16) | (data_buf[1]<<8) | data_buf[0] ;
-		data_transformed[1] = (data_buf[7]<<24) | (data_buf[6]<<16) | (data_buf[5]<<8) | data_buf[4] ;
-		data_transformed[2] = (data_buf[11]<<24) | (data_buf[10]<<16) | (data_buf[9]<<8) | data_buf[8] ;
+		data_transformed[0] = ((int)data_buf[3]<<24) | ((int)data_buf[2]<<16) | ((int)data_buf[1]<<8) | ((int)data_buf[0]) ;
+		data_transformed[1] = ((int)data_buf[7]<<24) | ((int)data_buf[6]<<16) | ((int)data_buf[5]<<8) | ((int)data_buf[4]) ;
+		data_transformed[2] = ((int)data_buf[11]<<24) | ((int)data_buf[10]<<16) | ((int)data_buf[9]<<8) | ((int)data_buf[8]) ;
+		//time_stamp = ((int)data_buf[19]<<54) | ((int)data_buf[18]<<48) | ((int)data_buf[17]<<40) | ((int)data_buf[16]<<32) | ((int)data_buf[15]<<24) | ((int)data_buf[14]<<16) | ((int)data_buf[13]<<8) | ((int)data_buf[12]) ;
+		printf("x:%d\n",data_transformed[0]);
+		printf("y:%d\n",data_transformed[1]);
+		printf("z:%d\n",data_transformed[2]);
 
+		//if(crc(data_transformed,12) == crc_data)
+		//{
+			last_x = localsense.x;
+			last_y = localsense.y;
+			last_z = localsense.z;
 
-		if(crc(data_transformed,12) == crc_data)
-		{
 			localsense.timestamp_boot = hrt_absolute_time(); 
-			localsense.x = data_transformed[0]/1000.0f;
-			localsense.y = data_transformed[1]/1000.0f;
-			localsense.z = data_transformed[2]/1000.0f;
-			localsense.vx = data_transformed[3]/1000.0f;
-			localsense.vy = data_transformed[4]/1000.0f;
-			localsense.vz = data_transformed[5]/1000.0f;
+			localsense.x = data_transformed[0]/100.0f;
+			localsense.y = data_transformed[1]/100.0f;
+			localsense.z = data_transformed[2]/100.0f;
 
-			if(crc_data == crc_data_last){
+			if((localsense.x - last_x > 10) || (localsense.y - last_y > 10))
+			{
 				valid = false;
 			}
+
+			/*
+			if(sum_data == last_sum_data){
+				valid = false;
+			}
+			*/
 			if(valid && read_valid){
 				if (pos_pub == nullptr) {
 					pos_pub = orb_advertise(ORB_ID(vision_position_estimate), &localsense);
 				} else {
 					orb_publish(ORB_ID(vision_position_estimate), pos_pub, &localsense);
-					mavlink_log_info(mavlink_fd, "[localsense] position: %d", (double)localsense.x);
+					//mavlink_log_info(mavlink_fd, "[localsense] position published");
 				}	
 			}else{
 				valid = true;
-			}
-			
-		}
+			}	
+		//}
 
-		usleep(90000);
+		usleep(40000);
 	}
 
 	warnx("[serial] exiting.\n");
@@ -363,23 +378,3 @@ void write_data(char data)
 	*(ringbuf+write_addr) = (unsigned char)data;  
 	write_addr = next_data_handle(write_addr);  
 }  
-
-/*crc*/
-unsigned short crc_update(unsigned short  crc ,  unsigned char data)
-{
-	data ^= (crc & 0xff) ;
-	data ^= data << 4;
-	return ((((unsigned short)data << 8) | ((crc >> 8) & 0xff) )^ (unsigned char)(data >> 4) ^ ((unsigned short)data << 3)) ;
-}
-
-unsigned short crc(void* data, unsigned short count)
-{
-	unsigned short crc = 0xff;
-	unsigned char *ptr = (unsigned char*)data;
-	for(int i = 0 ; i < count ; i++)
-	{
-		crc = crc_update(crc , *ptr);
-		ptr++;
-	}
-	return crc;
-}
