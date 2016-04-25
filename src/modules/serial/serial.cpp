@@ -23,7 +23,7 @@
 
 #define SERIAL_PORT	"/dev/ttyS6"
 #define MAXSIZE 	80
-#define BAUDRATE	115200
+#define BAUDRATE	1200
 
 static bool thread_should_exit = false;		
 static bool thread_running = false;		
@@ -33,10 +33,9 @@ int _serial_fd;
 int ret;
 
 char ringbuf[MAXSIZE];
-char data_buf[20];
-char readbuf[40];
-int data_transformed[3];
-float time_stamp;
+char data_buf[2];
+char readbuf[28];
+float data_transformed;
 float last_x;
 float last_y;
 float last_z;
@@ -44,7 +43,6 @@ float last_z;
 int read_addr = 0;  
 int write_addr = 0;  
 
-bool valid = true;
 bool read_valid = false;
 
 
@@ -148,14 +146,14 @@ int serial_thread_main(int argc, char *argv[])
 		//warnx("Hello serial!\n");
 
 		
-		ret = read(_serial_fd, readbuf,40);
+		ret = read(_serial_fd, readbuf,28);
 		if( ret <= 0 )
 		{
 			warnx("read err: %d\n", ret);
 
 		}else
 		{
-			for(int i = 0 ; i < 40 ; i++)
+			for(int i = 0 ; i < 28 ; i++)
 			{
 				write_data(readbuf[i]) ;
 			}
@@ -164,12 +162,10 @@ int serial_thread_main(int argc, char *argv[])
 		//Read position data
 		for(int i = 0 ; i < MAXSIZE ; i++)
 		{
-			if((ringbuf[read_addr] == 0xA5) && (ringbuf[next_data_handle(read_addr)] == 0x5A) 
-			    && (ringbuf[next_data_handle(read_addr,2)] == 0x2A) && (ringbuf[next_data_handle(read_addr,3)] == 0x21) 
-			    && (ringbuf[next_data_handle(read_addr,31)] == 0x55) && (ringbuf[next_data_handle(read_addr,32)] == 0xAA))  
+			if((ringbuf[read_addr] == 0x7E) && (ringbuf[next_data_handle(read_addr,27)] == 0x0D))  
 			{
-				read_addr = next_data_handle(read_addr,6) ; 
-				for(int j = 0 ; j < 20 ; j++)
+				read_addr = next_data_handle(read_addr,21) ; 
+				for(int j = 0 ; j < 2 ; j++)
 				{
 					data_buf[j] = ringbuf[read_addr] ;
 					read_addr = next_data_handle(read_addr) ;
@@ -181,53 +177,21 @@ int serial_thread_main(int argc, char *argv[])
 				read_addr = next_data_handle(read_addr) ;
 			}
 		}
-		read_addr = next_data_handle(read_addr, 7);
-		data_transformed[0] = ((int)data_buf[3]<<24) | ((int)data_buf[2]<<16) | ((int)data_buf[1]<<8) | ((int)data_buf[0]) ;
-		data_transformed[1] = ((int)data_buf[7]<<24) | ((int)data_buf[6]<<16) | ((int)data_buf[5]<<8) | ((int)data_buf[4]) ;
-		data_transformed[2] = ((int)data_buf[11]<<24) | ((int)data_buf[10]<<16) | ((int)data_buf[9]<<8) | ((int)data_buf[8]) ;
-		//time_stamp = ((int)data_buf[19]<<54) | ((int)data_buf[18]<<48) | ((int)data_buf[17]<<40) | ((int)data_buf[16]<<32) | ((int)data_buf[15]<<24) | ((int)data_buf[14]<<16) | ((int)data_buf[13]<<8) | ((int)data_buf[12]) ;
-		printf("x:%d\n",data_transformed[0]);
-		printf("y:%d\n",data_transformed[1]);
-		printf("z:%d\n",data_transformed[2]);
+		read_addr = next_data_handle(read_addr, 5);
 
-		//if(crc(data_transformed,12) == crc_data)
-		//{
-			last_x = localsense.x;
-			last_y = localsense.y;
-			last_z = localsense.z;
+		data_transformed =  (int)data_buf[0]<<8 || (int)data_buf[1];
+		printf("test:%d, %d\n",data_buf[0] , data_buf[1]);
 
-			localsense.timestamp_boot = hrt_absolute_time(); 
-			localsense.x = data_transformed[0]/100.0f;
-			localsense.y = data_transformed[1]/100.0f;
-			localsense.z = data_transformed[2]/100.0f;
-
-			if(fabs(localsense.x - last_x) > 10 || fabs(localsense.y - last_y) > 10)
-			{
-				valid = false;
-			}
-			if(fabs(localsense.x) > 100 || fabs(localsense.y) > 100)
-			{
-				valid = false;
-			}
-
-			/*
-			if(sum_data == last_sum_data){
-				valid = false;
-			}
-			*/
-			if(valid && read_valid){
-				if (pos_pub == nullptr) {
-					pos_pub = orb_advertise(ORB_ID(vision_position_estimate), &localsense);
-				} else {
-					orb_publish(ORB_ID(vision_position_estimate), pos_pub, &localsense);
-					//mavlink_log_info(mavlink_fd, "[localsense] position published");
-				}	
-			}else{
-				valid = true;
+		if(read_valid){
+			if (pos_pub == nullptr) {
+				pos_pub = orb_advertise(ORB_ID(vision_position_estimate), &localsense);
+			} else {
+				orb_publish(ORB_ID(vision_position_estimate), pos_pub, &localsense);
+				//mavlink_log_info(mavlink_fd, "[localsense] position published");
 			}	
-		//}
+		}	
 
-		usleep(40000);
+		usleep(1000000);
 	}
 
 	warnx("[serial] exiting.\n");
