@@ -201,7 +201,11 @@ int serial_thread_main(int argc, char *argv[])
 			localsense.y = data_transformed[1]/100.0f;
 			localsense.z = data_transformed[2]/100.0f;
 
-			if((localsense.x - last_x > 10) || (localsense.y - last_y > 10))
+			if(fabs(localsense.x - last_x) > 10 || fabs(localsense.y - last_y) > 10)
+			{
+				valid = false;
+			}
+			if(fabs(localsense.x) > 100 || fabs(localsense.y) > 100)
 			{
 				valid = false;
 			}
