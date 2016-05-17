@@ -227,7 +227,7 @@ int serial_thread_main(int argc, char *argv[])
 			}	
 		//}
 
-		usleep(40000);
+		usleep(20000);
 	}
 
 	warnx("[serial] exiting.\n");
