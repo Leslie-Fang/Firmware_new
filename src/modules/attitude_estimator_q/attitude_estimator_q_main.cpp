@@ -38,7 +38,7 @@
  *
  * @author Anton Babushkin <anton.babushkin@me.com>
  */
-xxxx
+
 #include <px4_config.h>
 #include <px4_posix.h>
 #include <unistd.h>
