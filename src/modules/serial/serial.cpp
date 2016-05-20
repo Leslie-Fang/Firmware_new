@@ -125,8 +125,8 @@ int serial_main(int argc, char *argv[])
 
 int serial_thread_main(int argc, char *argv[])
 {
-	//int mavlink_fd;
-	//mavlink_fd = px4_open(MAVLINK_LOG_DEVICE, 0);
+	int mavlink_fd;
+	mavlink_fd = px4_open(MAVLINK_LOG_DEVICE, 0);
 
 	warnx("[serial] starting\n");
 	thread_running = true;
@@ -147,7 +147,8 @@ int serial_thread_main(int argc, char *argv[])
 	while (!thread_should_exit) {
 		//warnx("Hello serial!\n");
 
-		
+		read_valid = false;
+
 		ret = read(_serial_fd, readbuf,40);
 		if( ret <= 0 )
 		{
@@ -192,39 +193,44 @@ int serial_thread_main(int argc, char *argv[])
 
 		//if(crc(data_transformed,12) == crc_data)
 		//{
-			last_x = localsense.x;
-			last_y = localsense.y;
-			last_z = localsense.z;
+		last_x = localsense.x;
+		last_y = localsense.y;
+		last_z = localsense.z;
 
-			localsense.timestamp_boot = hrt_absolute_time(); 
-			localsense.x = data_transformed[0]/100.0f;
-			localsense.y = data_transformed[1]/100.0f;
-			localsense.z = data_transformed[2]/100.0f;
+		localsense.timestamp_boot = hrt_absolute_time(); 
+		localsense.x = data_transformed[0]/100.0f;
+		localsense.y = data_transformed[1]/100.0f;
+		localsense.z = data_transformed[2]/100.0f;
 
-			if(fabs(localsense.x - last_x) > 10 || fabs(localsense.y - last_y) > 10)
-			{
-				valid = false;
-			}
-			if(fabs(localsense.x) > 100 || fabs(localsense.y) > 100)
-			{
-				valid = false;
-			}
+		if(fabs(localsense.x - last_x) > 10 || fabs(localsense.y - last_y) > 10)
+		{
+			valid = false;
+		}
+		if(fabs(localsense.x) > 100 || fabs(localsense.y) > 100)
+		{
+			valid = false;
+		}
+		if(fabs(localsense.x - last_x) < 0.001 && fabs(localsense.y - last_y) < 0.001)
+		{
+			valid = false;
+		}
 
-			/*
-			if(sum_data == last_sum_data){
-				valid = false;
-			}
-			*/
-			if(valid && read_valid){
-				if (pos_pub == nullptr) {
-					pos_pub = orb_advertise(ORB_ID(vision_position_estimate), &localsense);
-				} else {
-					orb_publish(ORB_ID(vision_position_estimate), pos_pub, &localsense);
-					//mavlink_log_info(mavlink_fd, "[localsense] position published");
-				}	
-			}else{
-				valid = true;
+		/*
+		if(sum_data == last_sum_data){
+			valid = false;
+		}
+		*/
+		if(valid && read_valid){
+			if (pos_pub == nullptr) {
+				pos_pub = orb_advertise(ORB_ID(vision_position_estimate), &localsense);
+			} else {
+				orb_publish(ORB_ID(vision_position_estimate), pos_pub, &localsense);
+				mavlink_log_info(mavlink_fd, "[localsense] position x: %f", (double)localsense.x);
+				mavlink_log_info(mavlink_fd, "[localsense] position y: %f", (double)localsense.y);
 			}	
+		}else{
+			valid = true;
+		}	
 		//}
 
 		usleep(20000);
@@ -340,8 +346,8 @@ int set_serial(int fd,int nSpeed, int nBits, char nEvent, int nStop)
 		newtio.c_cflag |=  CSTOPB;  
 	} 
 
-	newtio.c_cc[VTIME] = 0;
-	newtio.c_cc[VMIN] = 0;
+	newtio.c_cc[VTIME] = 10;
+	newtio.c_cc[VMIN] = 40;
 	tcflush(fd,TCIFLUSH);  
 	if((tcsetattr(fd,TCSANOW,&newtio))!=0)  
 	{  
@@ -353,7 +359,8 @@ int set_serial(int fd,int nSpeed, int nBits, char nEvent, int nStop)
 
 void serial_init()
 {
-	_serial_fd = open(SERIAL_PORT, O_RDWR | O_NOCTTY | O_NONBLOCK);
+	//_serial_fd = open(SERIAL_PORT, O_RDWR | O_NOCTTY | O_NONBLOCK);
+	_serial_fd = open(SERIAL_PORT, O_RDWR | O_NOCTTY);
 	warnx("serial open: %d",_serial_fd);
 	if (_serial_fd < 0) {
 		warnx("FAIL: serial fd");
