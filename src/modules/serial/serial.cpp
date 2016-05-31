@@ -210,7 +210,7 @@ int serial_thread_main(int argc, char *argv[])
 		{
 			valid = false;
 		}
-		if(fabs(localsense.x - last_x) < 0.001 && fabs(localsense.y - last_y) < 0.001)
+		if(fabs(localsense.x - last_x) < 0.0001 && fabs(localsense.y - last_y) < 0.0001)
 		{
 			valid = false;
 		}
