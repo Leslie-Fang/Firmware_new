@@ -81,7 +81,7 @@
 #define MIN_VALID_W 0.00001f
 #define PUB_INTERVAL 10000	// limit publish rate to 100 Hz
 #define EST_BUF_SIZE 250000 / PUB_INTERVAL		// buffer size is 0.5s
-#define DELAY_VICON 0.1f
+#define DELAY_VICON 0.15f
 
 static bool thread_should_exit = false; /**< Deamon exit flag */
 static bool thread_running = false; /**< Deamon status flag */

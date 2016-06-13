@@ -198,8 +198,8 @@ int serial_thread_main(int argc, char *argv[])
 		last_z = localsense.z;
 
 		localsense.timestamp_boot = hrt_absolute_time(); 
-		localsense.x = data_transformed[0]/100.0f;
-		localsense.y = data_transformed[1]/100.0f;
+		localsense.y = data_transformed[0]/100.0f;
+		localsense.x = data_transformed[1]/100.0f;
 		localsense.z = data_transformed[2]/100.0f;
 
 		if(fabs(localsense.x - last_x) > 10 || fabs(localsense.y - last_y) > 10)
