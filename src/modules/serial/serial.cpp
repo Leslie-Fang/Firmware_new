@@ -40,6 +40,7 @@ float time_stamp;
 float last_x;
 float last_y;
 float last_z;
+float pos_buf[8][2];
 
 int read_addr = 0;  
 int write_addr = 0;  
@@ -187,9 +188,9 @@ int serial_thread_main(int argc, char *argv[])
 		data_transformed[1] = ((int)data_buf[7]<<24) | ((int)data_buf[6]<<16) | ((int)data_buf[5]<<8) | ((int)data_buf[4]) ;
 		data_transformed[2] = ((int)data_buf[11]<<24) | ((int)data_buf[10]<<16) | ((int)data_buf[9]<<8) | ((int)data_buf[8]) ;
 		//time_stamp = ((int)data_buf[19]<<54) | ((int)data_buf[18]<<48) | ((int)data_buf[17]<<40) | ((int)data_buf[16]<<32) | ((int)data_buf[15]<<24) | ((int)data_buf[14]<<16) | ((int)data_buf[13]<<8) | ((int)data_buf[12]) ;
-		printf("x:%d\n",data_transformed[0]);
-		printf("y:%d\n",data_transformed[1]);
-		printf("z:%d\n",data_transformed[2]);
+		//printf("x:%d\n",data_transformed[0]);
+		// printf("y:%d\n",data_transformed[1]);
+		// printf("z:%d\n",data_transformed[2]);
 
 		//if(crc(data_transformed,12) == crc_data)
 		//{
@@ -221,12 +222,21 @@ int serial_thread_main(int argc, char *argv[])
 		}
 		*/
 		if(valid && read_valid){
+			for(int i = 7; i > 0; i--)
+			{
+				pos_buf[i][0] = pos_buf[i-1][0];
+				pos_buf[i][1] = pos_buf[i-1][1];
+			}
+			pos_buf[0][0] = localsense.x;
+			pos_buf[0][1] = localsense.y;
+			localsense.x = (pos_buf[7][0] + pos_buf[6][0] + pos_buf[5][0] + pos_buf[4][0] + pos_buf[3][0] + pos_buf[2][0] + pos_buf[1][0] + pos_buf[0][0]) / 8.0f;
+			localsense.y = (pos_buf[7][1] + pos_buf[6][1] + pos_buf[5][1] + pos_buf[4][1] + pos_buf[3][1] + pos_buf[2][1] + pos_buf[1][1] + pos_buf[0][1]) / 8.0f;
+			
 			if (pos_pub == nullptr) {
 				pos_pub = orb_advertise(ORB_ID(vision_position_estimate), &localsense);
 			} else {
 				orb_publish(ORB_ID(vision_position_estimate), pos_pub, &localsense);
-				mavlink_log_info(mavlink_fd, "[localsense] position x: %f", (double)localsense.x);
-				mavlink_log_info(mavlink_fd, "[localsense] position y: %f", (double)localsense.y);
+				mavlink_log_info(mavlink_fd, "[localsense] position x:%f  y:%f", (double)localsense.x,(double)localsense.y);
 			}	
 		}else{
 			valid = true;
