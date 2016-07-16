@@ -98,6 +98,7 @@ set(config_module_list
 	#additional apps
 	#
 	modules/serial
+	modules/localsense_kalman
 
 	#
 	# Logging
