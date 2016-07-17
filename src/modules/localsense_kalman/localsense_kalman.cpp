@@ -25,6 +25,7 @@
 #include <uORB/topics/vision_position_estimate.h>
 #include <uORB/topics/sensor_combined.h>
 #include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/localsense_kalman.h>
 
 
 #ifdef __cplusplus
@@ -159,6 +160,11 @@ int localsense_kalman_thread_main(int argc, char *argv[])
 	int sub_raw = orb_subscribe(ORB_ID(sensor_combined));
 	int sub_localsense = orb_subscribe(ORB_ID(vision_position_estimate));
 
+
+	struct localsense_kalman_s localsense_kalman_filter;
+	memset(&localsense_kalman_filter, 0, sizeof(localsense_kalman_filter));
+	orb_advert_t pos_pub = orb_advertise(ORB_ID(localsense_kalman), &localsense_kalman_filter);
+
 	thread_running = true;
 
 	//subscribe onece to init some data
@@ -248,14 +254,24 @@ int localsense_kalman_thread_main(int argc, char *argv[])
 						float dt = t_prev > 0 ? (t - t_prev) / 1000000.0f : 0.0f;
 						t_prev=t;
 						MarkerEKF(dt, z_k, q_a, q_v, q_x,r_a, r_x,xa_apo);
-						
+						localsense_kalman_filter.vx=xa_apo[2];
+						localsense_kalman_filter.vy=xa_apo[3];
+						localsense_kalman_filter.x=xa_apo[4];
+						localsense_kalman_filter.y=xa_apo[5];
+						if (pos_pub == nullptr) {
+							//pos_pub = orb_advertise(ORB_ID(vision_position_estimate), &localsense);
+							pos_pub = orb_advertise(ORB_ID(localsense_kalman), &localsense_kalman_filter);
+						} else {
+							orb_publish(ORB_ID(localsense_kalman), pos_pub, &localsense_kalman_filter);
+							//mavlink_log_info(mavlink_fd, "[localsense] position x:%f  y:%f", (double)localsense.x,(double)localsense.y);
+						}	
 					}
 				}
 			}
 		}
 
 		//sleep(10)
-		sleep(10);
+		usleep(10000);
 	}
 
 	thread_running = false;
