@@ -34,6 +34,8 @@ px4_add_module(
 	MODULE modules__localsense_kalman
 	MAIN localsense_kalman
 	STACK 1200
+	COMPILE_FLAGS
+		-Wno-float-equal
 	SRCS
 		localsense_kalman.cpp
 		MarkerEKF/MarkerEKF.c

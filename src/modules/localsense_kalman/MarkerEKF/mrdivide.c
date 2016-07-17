@@ -50,7 +50,7 @@ void mrdivide(float A[24], const float B[16])
       }
     }
 
-    if (b_A[c + kBcol]>0.000001F || b_A[c + kBcol]<-0.000001F ) {
+    if (b_A[c + kBcol] != 0.0F) {
       if (kBcol != 0) {
         ipiv[j] = (signed char)((j + kBcol) + 1);
         ix = j;
@@ -74,7 +74,7 @@ void mrdivide(float A[24], const float B[16])
     jAcol = c + 4;
     for (kBcol = 1; kBcol <= 3 - j; kBcol++) {
       temp = b_A[jAcol];
-      if (b_A[jAcol] > 0.000001F || b_A[jAcol] < -0.000001F) {
+      if (b_A[jAcol] != 0.0F) {
         ix = c + 1;
         k = (jp - j) + 8;
         for (i = 5 + jp; i + 1 <= k; i++) {
@@ -93,7 +93,7 @@ void mrdivide(float A[24], const float B[16])
     jAcol = j << 2;
     for (k = 1; k <= j; k++) {
       kBcol = 6 * (k - 1);
-      if (b_A[(k + jAcol) - 1] > 0.000001F || b_A[(k + jAcol) - 1] < -0.000001F) {
+      if (b_A[(k + jAcol) - 1] != 0.0F) {
         for (i = 0; i < 6; i++) {
           A[i + jp] -= b_A[(k + jAcol) - 1] * A[i + kBcol];
         }
@@ -111,7 +111,7 @@ void mrdivide(float A[24], const float B[16])
     jAcol = (j << 2) - 1;
     for (k = j + 2; k < 5; k++) {
       kBcol = 6 * (k - 1);
-      if (b_A[k + jAcol] > 0.000001F || b_A[k + jAcol] < -0.000001F) {
+      if (b_A[k + jAcol] != 0.0F) {
         for (i = 0; i < 6; i++) {
           A[i + jp] -= b_A[k + jAcol] * A[i + kBcol];
         }

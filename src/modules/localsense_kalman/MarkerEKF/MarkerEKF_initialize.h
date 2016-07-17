@@ -17,7 +17,7 @@
 #include "MarkerEKF_types.h"
 
 /* Function Declarations */
-extern void MarkerEKF_initialize(void);
+extern void MarkerEKF_initialize(float localsense_initx,float localsense_inity);
 
 #endif
 

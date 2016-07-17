@@ -16,12 +16,12 @@
  * Arguments    : void
  * Return Type  : void
  */
-void MarkerEKF_initialize(void)
+void MarkerEKF_initialize(float localsense_initx,float localsense_inity)
 {
  // rt_InitInfAndNaN(8U);
   R_not_empty_init();
   Q_not_empty_init();
-  MarkerEKF_init();
+  MarkerEKF_init(localsense_initx,localsense_inity);
 }
 
 /*

@@ -301,7 +301,7 @@ void MarkerEKF(float dt, const float z[4], float q_a, float q_v, float q_x,
  * Arguments    : void
  * Return Type  : void
  */
-void MarkerEKF_init(void)
+void MarkerEKF_init(float localsense_initx,float localsense_inity)
 {
   int i;
   static const signed char iv4[6] = { 0, 0, 0, 0, 10, 10 };
@@ -309,6 +309,8 @@ void MarkerEKF_init(void)
   for (i = 0; i < 6; i++) {
     x_apo[i] = iv4[i];
   }
+x_apo[4]=localsense_initx;
+x_apo[5]=localsense_inity;
 
   for (i = 0; i < 36; i++) {
     P_apo[i] = 1.0F;
