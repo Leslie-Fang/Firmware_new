@@ -36,6 +36,7 @@ px4_add_module(
 	STACK 1200
 	COMPILE_FLAGS
 		-Wno-float-equal
+		-Wframe-larger-than=1400
 	SRCS
 		localsense_kalman.cpp
 		MarkerEKF/MarkerEKF.c
