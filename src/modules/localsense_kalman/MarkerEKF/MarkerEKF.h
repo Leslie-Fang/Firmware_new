@@ -18,8 +18,7 @@
 
 /* Function Declarations */
 extern void MarkerEKF(float dt, const float z[4], float q_a, float q_v, float
-                      q_x, float r_a, float r_x, float xa_apo[6], float Pa_apo
-                      [36]);
+                      q_x, float r_a, float r_x, float xa_apo[6]);
 extern void MarkerEKF_init(float localsense_initx,float localsense_inity);
 extern void Q_not_empty_init(void);
 extern void R_not_empty_init(void);

@@ -42,7 +42,7 @@ static boolean_T R_not_empty;
  * Return Type  : void
  */
 void MarkerEKF(float dt, const float z[4], float q_a, float q_v, float q_x,
-               float r_a, float r_x, float xa_apo[6], float Pa_apo[36])
+               float r_a, float r_x, float xa_apo[6])
 {
   float ak[2];
   float c;
@@ -294,7 +294,6 @@ void MarkerEKF(float dt, const float z[4], float q_a, float q_v, float q_x,
     xa_apo[i] = x_apo[i];
   }
 
-  memcpy(&Pa_apo[0], &P_apo[0], 36U * sizeof(float));
 }
 
 /*

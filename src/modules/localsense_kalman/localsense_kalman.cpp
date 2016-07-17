@@ -140,7 +140,6 @@ int localsense_kalman_thread_main(int argc, char *argv[])
 	float r_x=0.5;
 	/*output value is not important*/
 	float xa_apo[6]={0.0f,0.0f,0.0f,0.0f,10.0f,10.0f};
-	float Pa_apo[36];
 	//hrt_abstime accel_timestamp = 0;
 	//hrt_abstime localsense_timestamp = 0;
 
@@ -231,11 +230,7 @@ int localsense_kalman_thread_main(int argc, char *argv[])
 					if (ACC_updated)
 					{
 						/* code */
-							orb_copy(ORB_ID(sensor_combined), sub_raw, &raw);
-
-						//float body_accx=raw.accelerometer_m_s2[0] ;
-						//float body_accy=raw.accelerometer_m_s2[1] ;
-						//float body_accz=raw.accelerometer_m_s2[2] ;
+						orb_copy(ORB_ID(sensor_combined), sub_raw, &raw);
 						/* transform acceleration vector from body frame to NED frame */
 						for (int i = 0; i < 3; i++) {
 							acc[i] = 0.0f;
@@ -252,7 +247,7 @@ int localsense_kalman_thread_main(int argc, char *argv[])
 						t = hrt_absolute_time();
 						float dt = t_prev > 0 ? (t - t_prev) / 1000000.0f : 0.0f;
 						t_prev=t;
-						MarkerEKF(dt, z_k, q_a, q_v, q_x,r_a, r_x,xa_apo,Pa_apo);
+						MarkerEKF(dt, z_k, q_a, q_v, q_x,r_a, r_x,xa_apo);
 						
 					}
 				}
