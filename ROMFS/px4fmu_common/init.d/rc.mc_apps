@@ -40,3 +40,4 @@ fi
 #
 land_detector start multicopter
 serial start
+#localsense_kalman start

@@ -228,13 +228,16 @@ int localsense_kalman_thread_main(int argc, char *argv[])
 			/*here only judge localsense is updated or not*/
 			if (fds[0].revents & POLLIN)
 			{
+				warnx("get localsense data!\n");
 				orb_check(vehicle_attitude_sub, &ATT_updated);
 				if(ATT_updated)
 				{
+					warnx("get ATT data!\n");
 					orb_copy(ORB_ID(vehicle_attitude), vehicle_attitude_sub, &att);
 					orb_check(sub_raw, &ACC_updated);
 					if (ACC_updated)
 					{
+						warnx("get ACC data!\n");
 						/* code */
 						orb_copy(ORB_ID(sensor_combined), sub_raw, &raw);
 						/* transform acceleration vector from body frame to NED frame */
@@ -253,11 +256,12 @@ int localsense_kalman_thread_main(int argc, char *argv[])
 						t = hrt_absolute_time();
 						float dt = t_prev > 0 ? (t - t_prev) / 1000000.0f : 0.0f;
 						t_prev=t;
-						MarkerEKF(dt, z_k, q_a, q_v, q_x,r_a, r_x,xa_apo);
+						MarkerEKF(dt,z_k,q_a,q_v,q_x,r_a,r_x,xa_apo);
 						localsense_kalman_filter.vx=xa_apo[2];
 						localsense_kalman_filter.vy=xa_apo[3];
 						localsense_kalman_filter.x=xa_apo[4];
 						localsense_kalman_filter.y=xa_apo[5];
+						printf("%f,%f,%f,%f\n",(double)xa_apo[2],(double)xa_apo[3],(double)xa_apo[4],(double)xa_apo[5]);
 						if (pos_pub == nullptr) {
 							//pos_pub = orb_advertise(ORB_ID(vision_position_estimate), &localsense);
 							pos_pub = orb_advertise(ORB_ID(localsense_kalman), &localsense_kalman_filter);
